@@ -9,8 +9,8 @@ def mse(imageA, imageB):
 
 
 # Load the images
-source_image_path = "image1.png"
-target_image_path = "image2.png"
+source_image_path = "images/1.jpg"
+target_image_path = "images/2.jpg"
 source_image = cv2.imread(source_image_path)
 target_image = cv2.imread(target_image_path)
 
