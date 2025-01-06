@@ -1,5 +1,6 @@
 import cv2
 import numpy as np
+import os
 import matplotlib.pyplot as plt
 
 
@@ -8,7 +9,7 @@ def mse(imageA, imageB):
     return err
 
 
-def process_images(source_image_path, target_image_path, threshold=24, block_size=16, padding=64):
+def process_pframe(source_image_path, target_image_path, threshold=24, block_size=16, padding=64):
     # Load the images
     #=============================================#
     source_image = cv2.imread(source_image_path)  #
@@ -50,13 +51,14 @@ def process_images(source_image_path, target_image_path, threshold=24, block_siz
 
             # Define search area in the source image
             search_area_x1 = max(0, x - padding)
-            search_area_y1 = max(0, y - padding) # padding = 64 ?
+            search_area_y1 = max(0, y - padding) 
             search_area_x2 = min(padded_source.shape[1], x + block_size + padding)
             search_area_y2 = min(padded_source.shape[0], y + block_size + padding)
 
             search_area = padded_source[search_area_y1:search_area_y2, search_area_x1:search_area_x2]
 
             # Convert to YCRCB and use Y channel
+            # ycrcb?
             target_block_ycrcb = cv2.cvtColor(target_block, cv2.COLOR_BGR2YCrCb)
             search_area_ycrcb = cv2.cvtColor(search_area, cv2.COLOR_BGR2YCrCb)
             target_y = target_block_ycrcb[:, :, 0]
@@ -113,14 +115,14 @@ def process_images(source_image_path, target_image_path, threshold=24, block_siz
                     residual_image[y : y + block_size, x : x + block_size] = best_residual
 
     # Display and save the residual image
-    residual_image_8u = cv2.convertScaleAbs(residual_image)
-    residual_display = cv2.cvtColor(residual_image_8u, cv2.COLOR_YCrCb2RGB)
-    residual_display = cv2.cvtColor(residual_display, cv2.COLOR_RGB2GRAY)
-    cv2.imwrite("residual_image.png", residual_display)
-    plt.imshow(residual_display, cmap="gray")
-    plt.title("Residual Image")
-    plt.axis("off")
-    plt.show()
+    # residual_image_8u = cv2.convertScaleAbs(residual_image)
+    # residual_display = cv2.cvtColor(residual_image_8u, cv2.COLOR_YCrCb2RGB)
+    # residual_display = cv2.cvtColor(residual_display, cv2.COLOR_RGB2GRAY)
+    # cv2.imwrite("residual_image.png", residual_display)
+    # plt.imshow(residual_display, cmap="gray")
+    # plt.title("Residual Image")
+    # plt.axis("off")
+    # plt.show()
 
     # Reconstruct the target image using the source image, motion vectors, and residuals
     reconstructed_image = np.zeros_like(padded_source)
@@ -149,14 +151,54 @@ def process_images(source_image_path, target_image_path, threshold=24, block_siz
             reconstructed_block = cv2.cvtColor(reconstructed_ycrcb, cv2.COLOR_YCrCb2BGR)
             reconstructed_image[y : y + block_size, x : x + block_size] = reconstructed_block
 
+    return reconstructed_image, residual_image
     # Save and display the reconstructed image
-    cv2.imwrite("reconstructed_image.png", reconstructed_image)
-    plt.imshow(cv2.cvtColor(reconstructed_image, cv2.COLOR_BGR2RGB))
-    plt.title("Reconstructed Image")
-    plt.axis("off")
-    plt.show()
+    # cv2.imwrite("reconstructed_image.png", reconstructed_image)
+    # plt.imshow(cv2.cvtColor(reconstructed_image, cv2.COLOR_BGR2RGB))
+    # plt.title("Reconstructed Image")
+    # plt.axis("off")
+    # plt.show()
 
-for i in range(1, 10):
-    source_image_path = f"images/{i}.jpg"
-    target_image_path = f"images/{i+1}.jpg"
-    process_images(source_image_path, target_image_path)
+image_folder = "images"
+
+resdiual = []
+reconstructed = []
+
+image_files = os.listdir(image_folder)
+image_files = sorted(image_files, key=lambda x: int(os.path.splitext(x)[0]))
+# Save the first frame in the reconstructed folder as it is without processing
+first_image_path = os.path.join(image_folder, image_files[0])
+first_image = cv2.imread(first_image_path)
+first_reconstructed_image_path = os.path.join("reconstructed", "reconstructed_0.png")
+
+# Ensure the directory exists
+os.makedirs(os.path.dirname(first_reconstructed_image_path), exist_ok=True)
+
+# Save the first image
+cv2.imwrite(first_reconstructed_image_path, first_image)
+
+for i in range(len(image_files) - 1):
+    source_image_path = os.path.join(image_folder, image_files[i])
+    target_image_path = os.path.join(image_folder, image_files[i + 1])
+    reconstructed_image, residual_image = process_pframe(source_image_path, target_image_path)
+    # Display and save the residual image
+    residual_image_8u = cv2.convertScaleAbs(residual_image)
+    residual_display = cv2.cvtColor(residual_image_8u, cv2.COLOR_YCrCb2RGB)
+    residual_display = cv2.cvtColor(residual_display, cv2.COLOR_RGB2GRAY)
+    
+    residual_image_path = os.path.join("residuals", f"residual_{i+1}.png")
+    reconstructed_image_path = os.path.join("reconstructed", f"reconstructed_{i+1}.png")
+    
+    # Ensure the directories exist
+    os.makedirs(os.path.dirname(residual_image_path), exist_ok=True)
+    os.makedirs(os.path.dirname(reconstructed_image_path), exist_ok=True)
+    
+    # Save the residual image
+    cv2.imwrite(residual_image_path, residual_display)
+    
+    # Save the reconstructed image
+    cv2.imwrite(reconstructed_image_path, reconstructed_image)
+
+
+
+    

@@ -20,9 +20,6 @@ def get_box_cor_from_center(center):
     return ((int(x - 8), int(y - 8)), (int(x + 8), int(y + 8)))
 
 def process_block(source_image, target_image, block_x, block_y, block_size=16, search_padding=64, threshold=24):
-    """
-    Traite un seul bloc et retourne le vecteur de mouvement et le résiduel
-    """
     # Extraire le bloc cible
     target_block = target_image[block_y:block_y + block_size, block_x:block_x + block_size]
     
@@ -140,8 +137,7 @@ class BlockMatchingWorker(QThread):
         if motion_vector is not None:
             source_x = x + motion_vector[0]
             source_y = y + motion_vector[1]
-            best_match_block = self.source_image[source_y:source_y + self.block_size, 
-                                               source_x:source_x + self.block_size]
+            best_match_block = self.source_image[source_y:source_y + self.block_size, source_x:source_x + self.block_size]
             
             best_match_ycrcb = cv2.cvtColor(best_match_block, cv2.COLOR_BGR2YCrCb)
             best_match_y = best_match_ycrcb[:, :, 0]
@@ -158,18 +154,19 @@ class BlockMatchingWorker(QThread):
             
     def _process_all_blocks(self):
         h, w, _ = self.target_image.shape
-        pad_h = (16 - h % 16) % 16
-        pad_w = (16 - w % 16) % 16
-        padded_target = cv2.copyMakeBorder(self.target_image, 0, pad_h, 0, pad_w, 
-                                         cv2.BORDER_CONSTANT, value=0)
-        padded_source = cv2.copyMakeBorder(self.source_image, 0, pad_h, 0, pad_w, 
-                                         cv2.BORDER_CONSTANT, value=0)
+        
+        pad_h = (self.block_size - h % self.block_size) % self.block_size
+        pad_w = (self.block_size - w % self.block_size) % self.block_size
+        
+        padded_target = cv2.copyMakeBorder(self.target_image, 0, pad_h, 0, pad_w, cv2.BORDER_CONSTANT, value=0)
+        padded_source = cv2.copyMakeBorder(self.source_image, 0, pad_h, 0, pad_w, cv2.BORDER_CONSTANT, value=0)
         
         blocks_vertical = padded_target.shape[0] // self.block_size
         blocks_horizontal = padded_target.shape[1] // self.block_size
         
         residual_image = np.zeros_like(padded_target, dtype=np.int16)
         reconstructed_image = np.zeros_like(padded_target)
+        
         motion_vectors = []
         
         total_blocks = blocks_vertical * blocks_horizontal
@@ -190,14 +187,11 @@ class BlockMatchingWorker(QThread):
                     source_x = x + motion_vector_x
                     source_y = y + motion_vector_y
                     
-                    best_match_block = padded_source[
-                        source_y:source_y + self.block_size, 
-                        source_x:source_x + self.block_size
-                    ]
+                    best_match_block = padded_source[source_y:source_y + self.block_size, source_x:source_x + self.block_size]
                     best_match_ycrcb = cv2.cvtColor(best_match_block, cv2.COLOR_BGR2YCrCb)
                     
                     reconstructed_ycrcb = best_match_ycrcb.astype(np.int16) + residual
-                    reconstructed_ycrcb = np.clip(reconstructed_ycrcb, 0, 255).astype("uint8")
+                    reconstructed_ycrcb = np.clip(reconstructed_ycrcb, 0, 255).astype("uint8") 
                     reconstructed_block = cv2.cvtColor(reconstructed_ycrcb, cv2.COLOR_YCrCb2BGR)
                     
                     reconstructed_image[y:y+self.block_size, x:x+self.block_size] = reconstructed_block
