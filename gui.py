@@ -20,6 +20,7 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import Qt, QThread, pyqtSignal
 from PyQt6.QtGui import QImage, QPixmap, QFont
+from main2 import process_all_frames, process_pframe
 
 
 def mse(imageA, imageB):
@@ -210,7 +211,7 @@ class BlockMatchingWorker(QThread):
 
         residual_image = np.zeros_like(padded_target, dtype=np.int16)
         reconstructed_image = np.zeros_like(padded_target)
-        
+
         motion_vectors = []
 
         total_blocks = blocks_vertical * blocks_horizontal
@@ -259,6 +260,92 @@ class BlockMatchingWorker(QThread):
                 self.progress.emit(int((processed_blocks / total_blocks) * 100))
 
         self.finished.emit((motion_vectors, residual_image, reconstructed_image, None))
+
+
+class BatchProcessingWorker(QThread):
+    progress = pyqtSignal(tuple)  # (percentage, status_text)
+    error = pyqtSignal(str)
+
+    def __init__(self, image_folder, output_folder):
+        super().__init__()
+        self.image_folder = image_folder
+        self.output_folder = output_folder
+
+    def run(self):
+        try:
+            # Create output directories
+            residuals_folder = os.path.join(self.output_folder, "residuals")
+            reconstructed_folder = os.path.join(self.output_folder, "reconstructed")
+            os.makedirs(residuals_folder, exist_ok=True)
+            os.makedirs(reconstructed_folder, exist_ok=True)
+
+            # Get and sort image files
+            image_files = os.listdir(self.image_folder)
+            try:
+                image_files = sorted(
+                    image_files, key=lambda x: int(os.path.splitext(x)[0])
+                )
+            except ValueError:
+                self.error.emit(
+                    "Image files must be named with numbers (e.g., 0.png, 1.png, etc.)"
+                )
+                return
+
+            if not image_files:
+                self.error.emit("No image files found in the input folder")
+                return
+
+            # Process first frame
+            self.progress.emit((0, "Processing first frame..."))
+            first_image_path = os.path.join(self.image_folder, image_files[0])
+            first_image = cv2.imread(first_image_path)
+            if first_image is None:
+                self.error.emit(f"Could not read image: {first_image_path}")
+                return
+
+            first_reconstructed_path = os.path.join(
+                reconstructed_folder, "reconstructed_0.png"
+            )
+            cv2.imwrite(first_reconstructed_path, first_image)
+
+            # Process remaining frames
+            total_frames = len(image_files) - 1
+            for i in range(total_frames):
+                # Update progress
+                progress = int((i + 1) / total_frames * 100)
+                self.progress.emit(
+                    (progress, f"Processing frame {i + 1} of {total_frames}...")
+                )
+
+                # Get source and target paths
+                source_image_path = os.path.join(
+                    reconstructed_folder, f"reconstructed_{i}.png"
+                )
+                target_image_path = os.path.join(self.image_folder, image_files[i + 1])
+
+                # Process frame pair
+                reconstructed_image, residual_image = process_pframe(
+                    source_image_path, target_image_path
+                )
+
+                # Process residual image
+                residual_image_8u = cv2.convertScaleAbs(residual_image)
+                residual_display = cv2.cvtColor(residual_image_8u, cv2.COLOR_YCrCb2RGB)
+                residual_display = cv2.cvtColor(residual_display, cv2.COLOR_RGB2GRAY)
+
+                # Save outputs
+                residual_path = os.path.join(residuals_folder, f"residual_{i+1}.png")
+                reconstructed_path = os.path.join(
+                    reconstructed_folder, f"reconstructed_{i+1}.png"
+                )
+
+                cv2.imwrite(residual_path, residual_display)
+                cv2.imwrite(reconstructed_path, reconstructed_image)
+
+            self.progress.emit((100, "Processing completed!"))
+
+        except Exception as e:
+            self.error.emit(f"An error occurred: {str(e)}")
 
 
 class BlockMatchingGUI(QMainWindow):
@@ -462,23 +549,34 @@ class BlockMatchingGUI(QMainWindow):
         input_folder = self.input_folder_path.text()
         output_folder = self.output_folder_path.text()
 
-        # Disable the process button during processing
+        # Disable the process button and update status
         self.process_frames_btn.setEnabled(False)
         self.batch_status.setText("Processing frames...")
         self.batch_progress.setValue(0)
 
-        # TODO: Add your frame processing logic here
-        # The logic should:
-        # 1. Load frames from input_folder
-        # 2. Process them using your block matching algorithm
-        # 3. Save results to output_folder
-        # 4. Update progress using self.batch_progress.setValue()
-        # 5. Update status using self.batch_status.setText()
+        # Create worker thread for batch processing
+        self.batch_worker = BatchProcessingWorker(input_folder, output_folder)
+        self.batch_worker.progress.connect(self.update_batch_progress)
+        self.batch_worker.finished.connect(self.on_batch_processing_finished)
+        self.batch_worker.error.connect(self.on_batch_processing_error)
+        self.batch_worker.start()
 
-        # This is just a placeholder to show how it would work
-        self.batch_status.setText("Processing completed!")
+    def update_batch_progress(self, progress_info):
+        percentage, status_text = progress_info
+        self.batch_progress.setValue(percentage)
+        self.batch_status.setText(status_text)
+
+    def on_batch_processing_finished(self):
+        self.batch_status.setText("Processing completed successfully!")
         self.batch_progress.setValue(100)
         self.process_frames_btn.setEnabled(True)
+        self.batch_worker = None
+
+    def on_batch_processing_error(self, error_message):
+        self.batch_status.setText(f"Error: {error_message}")
+        self.process_frames_btn.setEnabled(True)
+        self.batch_worker = None
+        QMessageBox.critical(self, "Error", error_message)
 
     def load_image(self, image_type):
         file_name, _ = QFileDialog.getOpenFileName(
