@@ -156,4 +156,7 @@ def process_images(source_image_path, target_image_path, threshold=24, block_siz
     plt.axis("off")
     plt.show()
 
-process_images("images/1.jpg", "images/2.jpg")
+for i in range(1, 10):
+    source_image_path = f"images/{i}.jpg"
+    target_image_path = f"images/{i+1}.jpg"
+    process_images(source_image_path, target_image_path)
