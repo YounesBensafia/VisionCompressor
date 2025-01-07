@@ -248,10 +248,6 @@ def process_all_frames(image_folder="images", output_folder="output"):
         cv2.imwrite(reconstructed_image_path, reconstructed_image)
 
 
-import cv2
-import os
-
-
 def create_video_from_reconstructed(
     reconstructed_folder="output/reconstructed",
     output_video="reconstructed_video.avi",

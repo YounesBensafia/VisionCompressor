@@ -171,4 +171,4 @@ cython_debug/
 .pypirc
 
 /reconstructed/
-/residuals/
+/residuals

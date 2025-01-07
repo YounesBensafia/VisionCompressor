@@ -20,7 +20,7 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import Qt, QThread, pyqtSignal
 from PyQt6.QtGui import QImage, QPixmap, QFont
-from main2 import process_all_frames, process_pframe
+from main_BGR import process_all_frames, process_pframe, create_video_from_reconstructed
 
 
 def mse(imageA, imageB):
@@ -330,8 +330,8 @@ class BatchProcessingWorker(QThread):
 
                 # Process residual image
                 residual_image_8u = cv2.convertScaleAbs(residual_image)
-                residual_display = cv2.cvtColor(residual_image_8u, cv2.COLOR_YCrCb2RGB)
-                residual_display = cv2.cvtColor(residual_display, cv2.COLOR_RGB2GRAY)
+                # residual_display = cv2.cvtColor(residual_image_8u, cv2.COLOR_YCrCb2RGB)
+                residual_display = cv2.cvtColor(residual_image_8u, cv2.COLOR_RGB2GRAY)
 
                 # Save outputs
                 residual_path = os.path.join(residuals_folder, f"residual_{i+1}.png")
@@ -518,12 +518,18 @@ class BlockMatchingGUI(QMainWindow):
         self.process_frames_btn.clicked.connect(self.process_frames)
         self.process_frames_btn.setEnabled(False)
 
+        # Video creation button
+        self.create_video_btn = QPushButton("Create Video from Reconstructed Frames")
+        self.create_video_btn.clicked.connect(self.create_video)
+        self.create_video_btn.setEnabled(True)
+
         # Add all widgets to layout
         layout.addWidget(back_btn)
         layout.addWidget(folder_group)
         layout.addWidget(self.batch_progress)
         layout.addWidget(self.batch_status)
         layout.addWidget(self.process_frames_btn)
+        layout.addWidget(self.create_video_btn)
         layout.addStretch()
 
         self.batch_processing_page.setLayout(layout)
@@ -570,7 +576,16 @@ class BlockMatchingGUI(QMainWindow):
         self.batch_status.setText("Processing completed successfully!")
         self.batch_progress.setValue(100)
         self.process_frames_btn.setEnabled(True)
+        self.create_video_btn.setEnabled(True)  # Enable video creation button
         self.batch_worker = None
+
+    def create_video(self):
+        output_folder = self.output_folder_path.text()
+        reconstructed_folder = os.path.join(output_folder, "reconstructed")
+        output_video = os.path.join(output_folder, "reconstructed_video.avi")
+
+        create_video_from_reconstructed(reconstructed_folder, output_video, fps=30)
+        QMessageBox.information(self, "Video Created", f"Video saved as {output_video}")
 
     def on_batch_processing_error(self, error_message):
         self.batch_status.setText(f"Error: {error_message}")
