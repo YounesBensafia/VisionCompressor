@@ -98,7 +98,3 @@ Contributions are welcome! Feel free to:
 - Open issues for bugs or enhancement suggestions
 - Submit pull requests with improvements
 - Share feedback about the tool
-
-## License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
