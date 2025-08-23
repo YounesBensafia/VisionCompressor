@@ -1,0 +1,4 @@
+tkinter
+opencv-python
+matplotlib
+PyQt6
