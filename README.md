@@ -1,7 +1,10 @@
 # VisionCompressor
 
-<img src="https://github.com/user-attachments/assets/900b26aa-973d-49f9-b092-25836ba542b4" alt="Preview" width="100%" />
-
+<img src="https://github.com/user-attachments/assets/900b26aa-973d-49f9-b092-25836ba542b4" 
+     alt="Preview" 
+     width="100%" 
+     height="70%" />
+     
 A powerful Python-based image compression and reconstruction tool that provides efficient compression algorithms while maintaining image quality.
 
 ## Features
