@@ -2,8 +2,7 @@
 
 <img src="https://github.com/user-attachments/assets/a5f4dafc-6901-44d7-be20-d9fa1ad045e9" 
      alt="Preview" 
-     width="100%" 
-     height="40%" />
+     width="100%" />
      
 A powerful Python-based image compression and reconstruction tool that provides efficient compression algorithms while maintaining image quality.
 
