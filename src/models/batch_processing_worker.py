@@ -44,33 +44,36 @@ class BatchProcessingWorker(QThread):
             cv2.imwrite(first_reconstructed_path, first_image)
 
             total_frames = len(image_files) - 1
-            for i in range(total_frames):
-                progress = int((i + 1) / total_frames * 100)
-                self.progress.emit(
-                    (progress, f"Processing frame {i + 1} of {total_frames}...")
-                )
-
-                source_image_path = os.path.join(
-                    reconstructed_folder, f"reconstructed_{i}.png"
-                )
-                target_image_path = os.path.join(self.image_folder, image_files[i + 1])
-
-                reconstructed_image, residual_image = process_pframe(
-                    source_image_path, target_image_path
-                )
-
-                residual_image_8u = cv2.convertScaleAbs(residual_image)
-                residual_display = cv2.cvtColor(residual_image_8u, cv2.COLOR_RGB2GRAY)
-
-                residual_path, reconstructed_path = self.generate_file_paths(residuals_folder, reconstructed_folder, i)
-
-                cv2.imwrite(residual_path, residual_display)
-                cv2.imwrite(reconstructed_path, reconstructed_image)
+            self.process_image_frames(residuals_folder, reconstructed_folder, image_files, total_frames)
 
             self.progress.emit((100, "Processing completed!"))
 
         except Exception as e:
             self.error.emit(f"An error occurred: {str(e)}")
+
+    def process_image_frames(self, residuals_folder, reconstructed_folder, image_files, total_frames):
+        for i in range(total_frames):
+            progress = int((i + 1) / total_frames * 100)
+            self.progress.emit(
+                    (progress, f"Processing frame {i + 1} of {total_frames}...")
+                )
+
+            source_image_path = os.path.join(
+                    reconstructed_folder, f"reconstructed_{i}.png"
+                )
+            target_image_path = os.path.join(self.image_folder, image_files[i + 1])
+
+            reconstructed_image, residual_image = process_pframe(
+                    source_image_path, target_image_path
+                )
+
+            residual_image_8u = cv2.convertScaleAbs(residual_image)
+            residual_display = cv2.cvtColor(residual_image_8u, cv2.COLOR_RGB2GRAY)
+
+            residual_path, reconstructed_path = self.generate_file_paths(residuals_folder, reconstructed_folder, i)
+
+            cv2.imwrite(residual_path, residual_display)
+            cv2.imwrite(reconstructed_path, reconstructed_image)
 
     def generate_file_paths(self, residuals_folder, reconstructed_folder, i):
         residual_path = os.path.join(residuals_folder, f"residual_{i+1}.png")
