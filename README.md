@@ -67,15 +67,16 @@ python src/gui.py
 
 ```
 VisionCompressor/
-├── src/               # Source code
+├── src/              # Source code
 │   ├── gui.py        # GUI implementation
 │   ├── main.py       # Standard compression
 │   ├── main_BGR.py   # BGR processing
 │   └── main_with_y_channel_only.py
 ├── images/           # Input images directory
-├── output/           # Output directory
 │   ├── reconstructed/  # Reconstructed images
 │   └── residuals/     # Residual images
+├── 
+│
 └── requirements.txt  # Python dependencies
 ```
 
