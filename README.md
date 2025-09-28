@@ -1,6 +1,6 @@
 # VisionCompressor
 
-<img src="https://github.com/user-attachments/assets/a5f4dafc-6901-44d7-be20-d9fa1ad045e9" 
+<img src="https://github.com/user-attachments/assets/969626c9-589d-40e0-b68b-7d4f153c72d1" 
      alt="Preview" 
      width="100%" />
      
