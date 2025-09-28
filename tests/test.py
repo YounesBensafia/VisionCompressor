@@ -12,7 +12,7 @@
 #         print("No folder selected. Exiting...")
 #         return
 
-#     images = sorted([f for f in os.listdir(folder_path) if f.lower().endswith(".png")])
+#     imagesa = sorted([f for f in os.listdir(folder_path) if f.lower().endswith(".png")])
 
 #     for index, image in enumerate(images):
 #         old_path = os.path.join(folder_path, image)

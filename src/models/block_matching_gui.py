@@ -1,10 +1,4 @@
-import cv2
-import numpy as np
-import matplotlib.pyplot as plt
-import sys
-import os
 from PyQt6.QtWidgets import (
-    QApplication,
     QMainWindow,
     QWidget,
     QVBoxLayout,
@@ -18,13 +12,13 @@ from PyQt6.QtWidgets import (
     QStackedWidget,
     QGroupBox,
 )
-from PyQt6.QtCore import Qt, QThread, pyqtSignal
-from PyQt6.QtGui import QFont
-from main_BGR import create_video_from_reconstructed
-from models.block_matching_worker import BlockMatchingWorker
-
-
-
+from src.models.block_matching_worker import BlockMatchingWorker
+from src.models.batch_processing_worker import BatchProcessingWorker
+import cv2
+import os
+from PyQt6.QtCore import Qt
+from src.main_BGR import create_video_from_reconstructed
+from matplotlib import pyplot as plt
 
 class BlockMatchingGUI(QMainWindow):
     def __init__(self):
@@ -39,55 +33,148 @@ class BlockMatchingGUI(QMainWindow):
         self.init_ui()
 
     def init_ui(self):
-        self.setWindowTitle("Block Matching")
-        self.setMinimumSize(500, 400)
+        self.setWindowTitle("VisionCompressor - Block Matching")
+        self.setMinimumSize(600, 500)
+        
+        self.setStyleSheet("""
+            QMainWindow {
+                background-color: #2b2b2b;
+                color: #ffffff;
+            }
+            QWidget {
+                background-color: #2b2b2b;
+                color: #ffffff;
+            }
+            QPushButton {
+                background-color: #4a9eff;
+                border: none;
+                border-radius: 8px;
+                padding: 12px 24px;
+                font-size: 11px;
+                font-weight: bold;
+                color: white;
+            }
+            QPushButton:hover {
+                background-color: #357abd;
+            }
+            QPushButton:pressed {
+                background-color: #2a5d8f;
+            }
+            QPushButton:disabled {
+                background-color: #555555;
+                color: #888888;
+            }
+            QGroupBox {
+                font-size: 12px;
+                font-weight: bold;
+                border: 2px solid #4a4a4a;
+                border-radius: 8px;
+                margin-top: 10px;
+                padding-top: 10px;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                left: 10px;
+                padding: 0 8px 0 8px;
+                color: #4a9eff;
+            }
+            QLineEdit {
+                background-color: #3c3c3c;
+                border: 2px solid #4a4a4a;
+                border-radius: 6px;
+                padding: 8px 12px;
+                font-size: 10px;
+            }
+            QLineEdit:focus {
+                border-color: #4a9eff;
+            }
+            QProgressBar {
+                border: 2px solid #4a4a4a;
+                border-radius: 6px;
+                text-align: center;
+                background-color: #3c3c3c;
+            }
+            QProgressBar::chunk {
+                background-color: #4a9eff;
+                border-radius: 4px;
+            }
+            QLabel {
+                color: #ffffff;
+            }
+        """)
 
-        # Create stacked widget to handle different pages
         self.stacked_widget = QStackedWidget()
         self.setCentralWidget(self.stacked_widget)
 
-        # Create pages
         self.create_mode_selection_page()
         self.create_single_frame_page()
         self.create_batch_processing_page()
 
-        # Add pages to stacked widget
         self.stacked_widget.addWidget(self.mode_selection_page)
         self.stacked_widget.addWidget(self.single_frame_page)
         self.stacked_widget.addWidget(self.batch_processing_page)
 
-        # Start with mode selection page
         self.stacked_widget.setCurrentIndex(0)
 
     def create_mode_selection_page(self):
         self.mode_selection_page = QWidget()
         layout = QVBoxLayout()
+        layout.setSpacing(30)
+        layout.setContentsMargins(40, 40, 40, 40)
 
-        # Add title label
-        title_label = QLabel("Select Processing Mode")
+        title_label = QLabel("🎯 VisionCompressor")
         title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        font = title_label.font()
-        font.setPointSize(14)
-        font.setBold(True)
-        title_label.setFont(font)
+        title_label.setStyleSheet("""
+            QLabel {
+                font-size: 32px;
+                font-weight: bold;
+                color: #4a9eff;
+                margin-bottom: 10px;
+            }
+        """)
 
-        # Create buttons
-        single_frame_btn = QPushButton("Single Frame Processing")
-        batch_process_btn = QPushButton("Batch Frame Processing")
+        subtitle_label = QLabel("Select Processing Mode")
+        subtitle_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        subtitle_label.setStyleSheet("""
+            QLabel {
+                font-size: 16px;
+                color: #cccccc;
+                margin-bottom: 30px;
+            }
+        """)
 
-        # Style buttons
+        single_frame_btn = QPushButton("🖼️ Single Frame Processing")
+        batch_process_btn = QPushButton("📁 Batch Frame Processing")
+
         for btn in [single_frame_btn, batch_process_btn]:
-            btn.setMinimumHeight(50)
-            btn.setFont(QFont("Arial", 11))
+            btn.setMinimumHeight(80)
+            btn.setStyleSheet("""
+                QPushButton {
+                    background-color: #3c3c3c;
+                    border: 2px solid #4a4a4a;
+                    border-radius: 12px;
+                    padding: 20px;
+                    font-size: 14px;
+                    font-weight: bold;
+                    text-align: left;
+                }
+                QPushButton:hover {
+                    background-color: #4a9eff;
+                    border-color: #4a9eff;
+                    transform: translateY(-2px);
+                }
+                QPushButton:pressed {
+                    background-color: #357abd;
+                }
+            """)
 
-        # Connect buttons
         single_frame_btn.clicked.connect(lambda: self.stacked_widget.setCurrentIndex(1))
         batch_process_btn.clicked.connect(
             lambda: self.stacked_widget.setCurrentIndex(2)
         )
 
-        # Add widgets to layout
         layout.addWidget(title_label)
+        layout.addWidget(subtitle_label)
         layout.addStretch()
         layout.addWidget(single_frame_btn)
         layout.addWidget(batch_process_btn)
@@ -98,17 +185,45 @@ class BlockMatchingGUI(QMainWindow):
     def create_single_frame_page(self):
         self.single_frame_page = QWidget()
         layout = QVBoxLayout()
+        layout.setSpacing(20)
+        layout.setContentsMargins(30, 30, 30, 30)
 
-        # Add back button
         back_btn = QPushButton("← Back to Mode Selection")
+        back_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #555555;
+                border-radius: 6px;
+                padding: 8px 16px;
+                font-size: 11px;
+                text-align: left;
+            }
+            QPushButton:hover {
+                background-color: #666666;
+            }
+        """)
         back_btn.clicked.connect(lambda: self.stacked_widget.setCurrentIndex(0))
 
-        # Image selection group
-        image_group = QGroupBox("Image Selection")
+        image_group = QGroupBox("📷 Image Selection")
         image_layout = QHBoxLayout()
+        image_layout.setSpacing(15)
 
-        self.load_source_btn = QPushButton("Load Source Image")
-        self.load_target_btn = QPushButton("Load Target Image")
+        self.load_source_btn = QPushButton("📁 Load Source Image")
+        self.load_target_btn = QPushButton("🎯 Load Target Image")
+        
+        for btn in [self.load_source_btn, self.load_target_btn]:
+            btn.setStyleSheet("""
+                QPushButton {
+                    background-color: #4a9eff;
+                    border-radius: 8px;
+                    padding: 15px;
+                    font-size: 11px;
+                    font-weight: bold;
+                }
+                QPushButton:hover {
+                    background-color: #357abd;
+                }
+            """)
+        
         self.load_source_btn.clicked.connect(lambda: self.load_image("source"))
         self.load_target_btn.clicked.connect(lambda: self.load_image("target"))
 
@@ -116,14 +231,46 @@ class BlockMatchingGUI(QMainWindow):
         image_layout.addWidget(self.load_target_btn)
         image_group.setLayout(image_layout)
 
-        # Processing options group
-        process_group = QGroupBox("Processing Options")
+        process_group = QGroupBox("⚙️ Processing Options")
         process_layout = QVBoxLayout()
+        process_layout.setSpacing(15)
 
-        self.single_block_btn = QPushButton("Process Single Block")
-        self.all_blocks_btn = QPushButton("Process All Blocks")
+        self.single_block_btn = QPushButton("🔍 Process Single Block")
+        self.all_blocks_btn = QPushButton("🚀 Process All Blocks")
+        
+        for btn in [self.single_block_btn, self.all_blocks_btn]:
+            btn.setStyleSheet("""
+                QPushButton {
+                    background-color: #28a745;
+                    border-radius: 8px;
+                    padding: 15px;
+                    font-size: 12px;
+                    font-weight: bold;
+                }
+                QPushButton:hover {
+                    background-color: #218838;
+                }
+                QPushButton:disabled {
+                    background-color: #555555;
+                    color: #888888;
+                }
+            """)
+        
         self.progress_bar = QProgressBar()
         self.progress_bar.setVisible(False)
+        self.progress_bar.setStyleSheet("""
+            QProgressBar {
+                border: 2px solid #4a4a4a;
+                border-radius: 8px;
+                text-align: center;
+                background-color: #3c3c3c;
+                height: 25px;
+            }
+            QProgressBar::chunk {
+                background-color: #28a745;
+                border-radius: 6px;
+            }
+        """)
 
         self.single_block_btn.clicked.connect(self.process_single_block)
         self.all_blocks_btn.clicked.connect(self.process_all_blocks)
@@ -133,18 +280,24 @@ class BlockMatchingGUI(QMainWindow):
         process_layout.addWidget(self.progress_bar)
         process_group.setLayout(process_layout)
 
-        # Status label
         self.status_label = QLabel("")
         self.status_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.status_label.setStyleSheet("""
+            QLabel {
+                background-color: #3c3c3c;
+                border-radius: 6px;
+                padding: 10px;
+                font-size: 11px;
+                color: #cccccc;
+            }
+        """)
 
-        # Add all widgets to layout
         layout.addWidget(back_btn)
         layout.addWidget(image_group)
         layout.addWidget(process_group)
         layout.addWidget(self.status_label)
         layout.addStretch()
 
-        # Initialize buttons as disabled
         self.single_block_btn.setEnabled(False)
         self.all_blocks_btn.setEnabled(False)
 
@@ -153,33 +306,82 @@ class BlockMatchingGUI(QMainWindow):
     def create_batch_processing_page(self):
         self.batch_processing_page = QWidget()
         layout = QVBoxLayout()
+        layout.setSpacing(20)
+        layout.setContentsMargins(30, 30, 30, 30)
 
-        # Add back button
         back_btn = QPushButton("← Back to Mode Selection")
+        back_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #555555;
+                border-radius: 6px;
+                padding: 8px 16px;
+                font-size: 11px;
+                text-align: left;
+            }
+            QPushButton:hover {
+                background-color: #666666;
+            }
+        """)
         back_btn.clicked.connect(lambda: self.stacked_widget.setCurrentIndex(0))
 
-        # Folder selection group
-        folder_group = QGroupBox("Folder Selection")
+        folder_group = QGroupBox("📂 Folder Selection")
         folder_layout = QVBoxLayout()
+        folder_layout.setSpacing(15)
 
-        # Input folder selection
         input_layout = QHBoxLayout()
         self.input_folder_path = QLineEdit()
-        self.input_folder_path.setPlaceholderText(
-            "Select input folder containing frames..."
-        )
-        input_folder_btn = QPushButton("Browse")
+        self.input_folder_path.setPlaceholderText("Select input folder containing frames...")
+        self.input_folder_path.setStyleSheet("""
+            QLineEdit {
+                background-color: #3c3c3c;
+                border: 2px solid #4a4a4a;
+                border-radius: 8px;
+                padding: 12px;
+                font-size: 11px;
+            }
+            QLineEdit:focus {
+                border-color: #4a9eff;
+            }
+        """)
+        
+        input_folder_btn = QPushButton("📁 Browse")
+        input_folder_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #4a9eff;
+                border-radius: 8px;
+                padding: 12px 20px;
+                min-width: 100px;
+            }
+        """)
         input_folder_btn.clicked.connect(self.select_input_folder)
         input_layout.addWidget(self.input_folder_path)
         input_layout.addWidget(input_folder_btn)
 
-        # Output folder selection
         output_layout = QHBoxLayout()
         self.output_folder_path = QLineEdit()
-        self.output_folder_path.setPlaceholderText(
-            "Select output folder for processed frames..."
-        )
-        output_folder_btn = QPushButton("Browse")
+        self.output_folder_path.setPlaceholderText("Select output folder for processed frames...")
+        self.output_folder_path.setStyleSheet("""
+            QLineEdit {
+                background-color: #3c3c3c;
+                border: 2px solid #4a4a4a;
+                border-radius: 8px;
+                padding: 12px;
+                font-size: 11px;
+            }
+            QLineEdit:focus {
+                border-color: #4a9eff;
+            }
+        """)
+        
+        output_folder_btn = QPushButton("📁 Browse")
+        output_folder_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #4a9eff;
+                border-radius: 8px;
+                padding: 12px 20px;
+                min-width: 100px;
+            }
+        """)
         output_folder_btn.clicked.connect(self.select_output_folder)
         output_layout.addWidget(self.output_folder_path)
         output_layout.addWidget(output_folder_btn)
@@ -188,20 +390,70 @@ class BlockMatchingGUI(QMainWindow):
         folder_layout.addLayout(output_layout)
         folder_group.setLayout(folder_layout)
 
-        # Processing controls
         self.batch_progress = QProgressBar()
+        self.batch_progress.setStyleSheet("""
+            QProgressBar {
+                border: 2px solid #4a4a4a;
+                border-radius: 8px;
+                text-align: center;
+                background-color: #3c3c3c;
+                height: 30px;
+                font-weight: bold;
+            }
+            QProgressBar::chunk {
+                background-color: #28a745;
+                border-radius: 6px;
+            }
+        """)
+        
         self.batch_status = QLabel("Ready to process")
         self.batch_status.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.process_frames_btn = QPushButton("Process All Frames")
+        self.batch_status.setStyleSheet("""
+            QLabel {
+                background-color: #3c3c3c;
+                border-radius: 6px;
+                padding: 12px;
+                font-size: 12px;
+                color: #cccccc;
+            }
+        """)
+        
+        self.process_frames_btn = QPushButton("🚀 Process All Frames")
+        self.process_frames_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #28a745;
+                border-radius: 8px;
+                padding: 15px;
+                font-size: 13px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #218838;
+            }
+            QPushButton:disabled {
+                background-color: #555555;
+                color: #888888;
+            }
+        """)
         self.process_frames_btn.clicked.connect(self.process_frames)
         self.process_frames_btn.setEnabled(False)
 
-        # Video creation button
-        self.create_video_btn = QPushButton("Create Video from Reconstructed Frames")
+        self.create_video_btn = QPushButton("🎬 Create Video from Reconstructed Frames")
+        self.create_video_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #dc3545;
+                border-radius: 8px;
+                padding: 15px;
+                font-size: 13px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #c82333;
+            }
+        """)
         self.create_video_btn.clicked.connect(self.create_video)
         self.create_video_btn.setEnabled(True)
 
-        # Add all widgets to layout
         layout.addWidget(back_btn)
         layout.addWidget(folder_group)
         layout.addWidget(self.batch_progress)
@@ -233,12 +485,10 @@ class BlockMatchingGUI(QMainWindow):
         input_folder = self.input_folder_path.text()
         output_folder = self.output_folder_path.text()
 
-        # Disable the process button and update status
         self.process_frames_btn.setEnabled(False)
         self.batch_status.setText("Processing frames...")
         self.batch_progress.setValue(0)
 
-        # Create worker thread for batch processing
         self.batch_worker = BatchProcessingWorker(input_folder, output_folder)
         self.batch_worker.progress.connect(self.update_batch_progress)
         self.batch_worker.finished.connect(self.on_batch_processing_finished)
@@ -254,7 +504,7 @@ class BlockMatchingGUI(QMainWindow):
         self.batch_status.setText("Processing completed successfully!")
         self.batch_progress.setValue(100)
         self.process_frames_btn.setEnabled(True)
-        self.create_video_btn.setEnabled(True)  # Enable video creation button
+        self.create_video_btn.setEnabled(True)
         self.batch_worker = None
 
     def create_video(self):
@@ -290,7 +540,6 @@ class BlockMatchingGUI(QMainWindow):
             self._check_images()
 
     def _check_images(self):
-        """Check if both images are loaded and have the same dimensions"""
         if self.source_image is not None and self.target_image is not None:
             if self.source_image.shape == self.target_image.shape:
                 self.single_block_btn.setEnabled(True)
@@ -307,7 +556,6 @@ class BlockMatchingGUI(QMainWindow):
         if not self._validate_images():
             return
 
-        # Create OpenCV window for block selection
         cv2.namedWindow("Select Block")
         cv2.setMouseCallback("Select Block", self._select_block)
         cv2.imshow("Select Block", self.target_image)
@@ -342,29 +590,23 @@ class BlockMatchingGUI(QMainWindow):
         self.worker.finished.connect(self._on_all_blocks_finished)
         self.worker.start()
 
-        # Disable buttons during processing
         self.single_block_btn.setEnabled(False)
         self.all_blocks_btn.setEnabled(False)
 
     def draw_grid(self, image):
-        """Draw the grid on the image and highlight hovered block"""
         grid_image = image.copy()
         h, w = image.shape[:2]
 
-        # Draw vertical lines
         for x in range(0, w, self.block_size):
             cv2.line(grid_image, (x, 0), (x, h), (128, 128, 128), 1)
 
-        # Draw horizontal lines
         for y in range(0, h, self.block_size):
             cv2.line(grid_image, (0, y), (w, y), (128, 128, 128), 1)
 
         if self.hover_pos:
             x, y = self.hover_pos
-            # Snap to grid
             x = (x // self.block_size) * self.block_size
             y = (y // self.block_size) * self.block_size
-            # Draw highlighted block
             cv2.rectangle(
                 grid_image,
                 (x, y),
@@ -376,7 +618,6 @@ class BlockMatchingGUI(QMainWindow):
         return grid_image
 
     def _mouse_move(self, event, x, y, flags, param):
-        """Handle mouse movement to highlight blocks"""
         if event == cv2.EVENT_MOUSEMOVE:
             self.hover_pos = (x, y)
             if self.selection_image is not None:
@@ -398,14 +639,11 @@ class BlockMatchingGUI(QMainWindow):
         if not self._validate_images():
             return
 
-        # Create a copy of the target image for selection
         self.selection_image = self.target_image.copy()
 
-        # Create window and set mouse callback
         cv2.namedWindow("Select Block")
         cv2.setMouseCallback("Select Block", self._mouse_move)
 
-        # Show initial grid
         display_image = self.draw_grid(self.target_image)
         cv2.imshow("Select Block", display_image)
 
@@ -421,7 +659,6 @@ class BlockMatchingGUI(QMainWindow):
         motion_vector, residual, reconstructed_block, coords = result
         if motion_vector is not None:
             x, y = coords
-            # Draw the selected block on the original image for visualization
             marked_image = self.target_image.copy()
             cv2.rectangle(
                 marked_image,
@@ -476,13 +713,11 @@ class BlockMatchingGUI(QMainWindow):
         plt.show()
 
     def _show_all_blocks_results(self, residual_image, reconstructed_image):
-        # Save and display residual image
         residual_image_8u = cv2.convertScaleAbs(residual_image)
         residual_display = cv2.cvtColor(residual_image_8u, cv2.COLOR_YCrCb2RGB)
         residual_display = cv2.cvtColor(residual_display, cv2.COLOR_RGB2GRAY)
         cv2.imwrite("residual_image.png", residual_display)
 
-        # Save reconstructed image
         cv2.imwrite("reconstructed_image.png", reconstructed_image)
 
         plt.figure(figsize=(10, 5))
@@ -496,14 +731,3 @@ class BlockMatchingGUI(QMainWindow):
         plt.title("Reconstructed Image")
         plt.axis("off")
         plt.show()
-
-
-def main():
-    app = QApplication(sys.argv)
-    gui = BlockMatchingGUI()
-    gui.show()
-    sys.exit(app.exec())
-
-
-if __name__ == "__main__":
-    main()

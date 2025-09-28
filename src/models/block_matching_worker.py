@@ -1,5 +1,5 @@
 from PyQt6.QtCore import QThread, pyqtSignal
-from services.process_block import process_block
+from src.services.process_block import process_block
 import cv2
 import numpy as np
 

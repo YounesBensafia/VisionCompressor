@@ -1,7 +1,7 @@
 import cv2
 import numpy as np
-from utils.mse import mse
-from utils.get_box_cor_from_center import get_box_cor_from_center
+from src.utils.mse import mse
+from src.utils.get_box_cor_from_center import get_box_cor_from_center
 def evaluate_search_points(search_area_x1, search_area_y1, search_area, target_block_ycrcb, search_area_ycrcb, target_y, search_area_y, min_mse, points):
     for p in points:
         box = get_box_cor_from_center(p)

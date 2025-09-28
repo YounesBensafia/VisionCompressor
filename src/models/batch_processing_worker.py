@@ -1,7 +1,7 @@
 from PyQt6.QtCore import QThread, pyqtSignal
 import os
 import cv2
-from main_BGR import process_pframe
+from src.main_BGR import process_pframe
 
 class BatchProcessingWorker(QThread):
     progress = pyqtSignal(tuple)

@@ -1,6 +1,6 @@
 import cv2
 import numpy as np
-from utils.process_block_utils import generate_search_points, evaluate_search_points, convert_to_ycrcb, calculate_search_area
+from src.utils.process_block_utils import generate_search_points, evaluate_search_points, convert_to_ycrcb, calculate_search_area
 def process_block(source_image, target_image, block_x, block_y, block_size=16, search_padding=64, threshold=24):
     target_block = target_image[
         block_y : block_y + block_size, block_x : block_x + block_size
